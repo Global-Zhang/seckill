@@ -4,11 +4,24 @@ import org.example.seckill.pojo.User;
 import org.example.seckill.service.IGoodsService;
 import org.example.seckill.vo.GoodsVo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.thymeleaf.context.WebContext;
+import org.thymeleaf.spring5.view.ThymeleafViewResolver;
+
+import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.util.Date;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 商品
@@ -22,9 +35,24 @@ public class GoodsController {
 
     @Autowired
     private IGoodsService goodsService;
+    @Autowired
+    private RedisTemplate redisTemplate;
+    //静态页面的mvc
+    @Autowired
+    private ThymeleafViewResolver thymeleafViewResolver;
 
-    @RequestMapping("/toDetail/{goodsId}")
-    public String toDetail(Model model,User user,@PathVariable("goodsId") Long goodsId){
+    @RequestMapping(value = "/toDetail/{goodsId}" ,produces = "text/html;charset=utf-8")
+    //2.0-加入servlet方便thymeleaf渲染，将页面跳转变为返回对象，produce的就是对象
+    //public String toDetail(Model model,User user,@PathVariable("goodsId") Long goodsId)
+    @ResponseBody
+    public String toDetail(Model model,User user,@PathVariable("goodsId") Long goodsId,HttpServletRequest request,HttpServletResponse response){
+
+        ValueOperations valueOperations = redisTemplate.opsForValue();
+        String html = (String) valueOperations.get("goodsDetail:"+goodsId);
+        if (!StringUtils.isEmpty(html)){
+            return html;
+        }
+
         model.addAttribute("user",user);
         GoodsVo goods = goodsService.findGoodsVoByGoodsId(goodsId);
         model.addAttribute("goods",goods);
@@ -51,14 +79,48 @@ public class GoodsController {
         }
         model.addAttribute("secKillStatus",seckillStatus);
         model.addAttribute("remainSeconds",remainSeconds);
-        return "goodsDetail";
+
+        //手动渲染，并存入redis，返回页面
+        WebContext context = new WebContext(request,response, request.getServletContext(),request.getLocale(), model.asMap());
+        html = thymeleafViewResolver.getTemplateEngine().process("goodsDetail",context);
+
+        //存入redis
+        if (!StringUtils.isEmpty(html)){
+            valueOperations.set("goodsDetail"+goodsId,html,60,TimeUnit.SECONDS);
+        }
+
+        return html;
+        //return "goodsDetail";
     }
 
-    @RequestMapping("toList")
-    public String toLogin(Model model,User user){
+    @RequestMapping(value = "toList",produces = "text/html;charset=utf-8")
+    @ResponseBody
+    //2.0-添加servlet为thymeleaf模板赋值，将页面跳转变为返回对象，produce的就是对象
+    //public String toLogin(Model model,User user){
+    public String toLogin(Model model, User user, HttpServletRequest request, HttpServletResponse response){
+        //3.0-获取redis模板
+        ValueOperations valueOperations = redisTemplate.opsForValue();
+        String html = (String)valueOperations.get("goodsList");
+       //3.0- 从redis获取值，为空赋值，不为空调用返回页面
+        if (!StringUtils.isEmpty(html)){
+            return html;
+        }
        model.addAttribute("user",user);
        model.addAttribute("goodsList",goodsService.findGoodsVo());
-       return "goodsList";
+
+        //3.0-手动渲染thymeleaf模板
+        WebContext context = new WebContext(request,response,request.getServletContext(),request.getLocale(),model.asMap());
+        html = thymeleafViewResolver.getTemplateEngine().process("goodsList",context);
+
+        //3.0-存入缓存
+        if (!StringUtils.isEmpty(html)){
+            valueOperations.set("goodsList",html,60, TimeUnit.SECONDS);
+        }
+
+        return html;
+
+       //2.0-不用页面跳转了，改用页面缓存
+       //return "goodsList";
     }
 
     /**

@@ -39,4 +39,6 @@ public class RespBean {
     public static RespBean error(RespBeanEnum respBeanEnum) {
         return new RespBean(respBeanEnum.getCode(), respBeanEnum.getMsg(),null);
     }
+
+
 }

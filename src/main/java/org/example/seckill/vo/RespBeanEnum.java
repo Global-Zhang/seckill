@@ -19,7 +19,8 @@ public enum RespBeanEnum {
     SESSION_ERROR(500210,"session不存在或者已经失效"),
     LOGINVO_ERROR(500211,"用户名或密码错误"),
     MOBILE_ERROR(500212,"手机号码格式错误"),
-
+    MOBILE_NOT_EXIST(500213, "手机号码不存在"),
+    PASSWORD_UPDATE_FAIL(500214, "密码更新失败"),
     BIND_ERROR(300210,"参数校验错误"),
     EMPTY_STOCK(300220,"库存为空");
     private final Integer code;
