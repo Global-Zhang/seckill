@@ -73,7 +73,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper,User> implements IUs
         return user;
     }
 
-    //对象缓存--看过程即可
+    //对象缓存--看过程即可--通过jmeter测试即可
     @Override
     public RespBean updatePassword(String userTicket, Long id, String password) {
 
